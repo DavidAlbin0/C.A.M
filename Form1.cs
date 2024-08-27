@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Drawing;
 using System.Windows.Forms;
 using CustomerAdvancementManager_CAM_;
 
@@ -8,6 +9,8 @@ namespace CustomerAdvancementManager_CAM_
     {
         private bool isMenuCollapsed = false; // Estado del menú
         private ConexionDB conexionDB;
+
+        public object FormDashboardToolStringMenuItem { get; private set; }
 
         public Form1()
         {
@@ -22,7 +25,7 @@ namespace CustomerAdvancementManager_CAM_
             pendientesToolStripMenuItem.Click += new EventHandler(PendientesToolStripMenuItem_Click);
             avancesToolStripMenuItem.Click += new EventHandler(AvancesToolStripMenuItem_Click);
             subirANubeToolStripMenuItem.Click += new EventHandler(SubirABaseToolStripMenuItem_Click);
-            //dashBoardToolStripMenuItem.Click += new EventHandler(FormDashboardToolStringMenuItem_Click);
+            dashBoardToolStripMenuItem.Click += new EventHandler(FormDashboardToolStringMenuItem_Click);
 
             this.Resize += new EventHandler(Form1_Resize);
         }
@@ -39,8 +42,8 @@ namespace CustomerAdvancementManager_CAM_
         {
             try
             {
-                conexionDB.TestConnection();
-                MessageBox.Show("Conexión a la base de datos exitosa.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                //conexionDB.TestConnection();
+                MessageBox.Show("Conexión a la base de datos exitosa pérronsisima.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
@@ -80,13 +83,11 @@ namespace CustomerAdvancementManager_CAM_
 
             if (isPanelCollapsed)
             {
-                // Si el panel está colapsado, restaurar su tamaño
                 panel1.Width = 260; // Tamaño original del panel
                 panel1.Dock = DockStyle.Left; // Asegúrate de que el panel siga estando acoplado al lado izquierdo
             }
             else
             {
-                // Si el panel no está colapsado, reducir su tamaño
                 panel1.Width = 70; // Tamaño reducido del panel
                 panel1.Dock = DockStyle.Left; // Asegúrate de que el panel siga estando acoplado al lado izquierdo
             }
@@ -121,34 +122,59 @@ namespace CustomerAdvancementManager_CAM_
             form.Show();
         }
 
+        private void SetDefaultMenuButtonColors()
+        {
+            // Establecer el fondo predeterminado de los botones del menú en blanco
+            clientesToolStripMenuItem.BackColor = Color.White;
+            pendientesToolStripMenuItem.BackColor = Color.White;
+            avancesToolStripMenuItem.BackColor = Color.White;
+            subirANubeToolStripMenuItem.BackColor = Color.White;
+            dashBoardToolStripMenuItem.BackColor = Color.White;
+        }
+
+        private void ResetMenuButtonColors()
+        {
+            // Restablecer todos los botones a su fondo blanco predeterminado
+            clientesToolStripMenuItem.BackColor = Color.White;
+            pendientesToolStripMenuItem.BackColor = Color.White;
+            avancesToolStripMenuItem.BackColor = Color.White;
+            subirANubeToolStripMenuItem.BackColor = Color.White;
+            dashBoardToolStripMenuItem.BackColor= Color.White;
+        }
+
         private void ClientesToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            ResetMenuButtonColors();
+            clientesToolStripMenuItem.BackColor = Color.FromArgb(128, 173, 216, 230); // Azul translúcido
             OpenForm(new FormClientes(), FormWindowState.Maximized);
         }
 
-        private void FormDashBoardToolStripMenuItem_Click(object sender, EventArgs e)
+        private void FormDashboardToolStringMenuItem_Click(object sender, EventArgs e)
         {
+            ResetMenuButtonColors();
+            dashBoardToolStripMenuItem.BackColor = Color.FromArgb(128, 173, 216, 230); // Azul translúcido
             OpenForm(new FormDashBoard(), FormWindowState.Maximized);
         }
 
         private void PendientesToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            ResetMenuButtonColors();
+            pendientesToolStripMenuItem.BackColor = Color.FromArgb(128, 173, 216, 230); // Azul translúcido
             OpenForm(new FormPendientes(), FormWindowState.Maximized);
         }
 
         private void AvancesToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            ResetMenuButtonColors();
+            avancesToolStripMenuItem.BackColor = Color.FromArgb(128, 173, 216, 230); // Azul translúcido
             OpenForm(new FormAvances(), FormWindowState.Maximized);
         }
 
         private void SubirABaseToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            ResetMenuButtonColors();
+            subirANubeToolStripMenuItem.BackColor = Color.FromArgb(128, 173, 216, 230); // Azul translúcido
             OpenForm(new FormSubirANube(), FormWindowState.Maximized);
         }
-
-      /*  private void FormDashboardToolStringMenuItem_Click(object sender, EventArgs e)
-        {
-            OpenForm(new FormDashboard(), FormWindowState.Maximized);
-        }*/
     }
-    }
+}

@@ -5,6 +5,7 @@ using System.Windows.Forms;
 using System.IO;
 using OfficeOpenXml;
 using System.Linq;
+using System.Data.SqlClient;
 
 namespace CustomerAdvancementManager_CAM_
 {
@@ -14,6 +15,7 @@ namespace CustomerAdvancementManager_CAM_
         private string searchText = string.Empty;
         private int searchStartIndex = -1;
         private Label[] labels;
+        private string connectionString = "Server=WSTSEC-280\\MSSQLSERVER01;Database=Prueba;User Id=userPrueba;Password=3.1416Xpi;";
 
 
         public FormSubirANube()
@@ -28,6 +30,8 @@ namespace CustomerAdvancementManager_CAM_
             labels = new Label[] { label1, label2, label3, label4, label5, label6, label7, label8, label9, label10, label12, label13 };
             // Set the license context for EPPlus
             ExcelPackage.LicenseContext = LicenseContext.NonCommercial; // Adjust according to your license type
+
+
         }
 
         private void ConfigureDataGridView()
@@ -119,6 +123,7 @@ namespace CustomerAdvancementManager_CAM_
                 }
             }
         }
+
 
         private void InitializeLabels()
         {
@@ -217,7 +222,7 @@ namespace CustomerAdvancementManager_CAM_
                     string fileName = System.IO.Path.GetFileName(filePath);
 
                     // Actualizar el contenido de label11
-                    label11.Text =  fileName;
+                    label11.Text = fileName;
 
                     // Load the selected Excel file into the DataGridView
                     LoadExcelFileIntoDataGridView(filePath);
@@ -279,7 +284,7 @@ namespace CustomerAdvancementManager_CAM_
                     switch (headerText)
                     {
                         case "AÑO":
-                            headerText = "año_Proy";
+                            headerText = "anio_Proy";
                             break;
                         case "No. PROY":
                             headerText = "id_Proy";
@@ -328,6 +333,9 @@ namespace CustomerAdvancementManager_CAM_
                             break;
                         case "Suma de UTILIDAD-PERDIDA":
                             headerText = "total_uti_perd";
+                            break;
+                        case "tipo2":
+                            headerText = "estatus";
                             break;
                         default:
                             break;
@@ -440,5 +448,143 @@ namespace CustomerAdvancementManager_CAM_
         {
 
         }
+
+
+        private void SaveDataGridViewToExcel(DataGridView dataGridView, string filePath)
+        {
+            // Crear un nuevo paquete Excel
+            using (var package = new ExcelPackage())
+            {
+                // Crear una hoja de trabajo
+                var worksheet = package.Workbook.Worksheets.Add("Hoja1");
+
+                // Añadir los encabezados de las columnas
+                for (int i = 0; i < dataGridView.Columns.Count; i++)
+                {
+                    worksheet.Cells[1, i + 1].Value = dataGridView.Columns[i].HeaderText;
+                }
+
+                // Añadir las filas del DataGridView
+                for (int i = 0; i < dataGridView.Rows.Count; i++)
+                {
+                    for (int j = 0; j < dataGridView.Columns.Count; j++)
+                    {
+                        worksheet.Cells[i + 2, j + 1].Value = dataGridView.Rows[i].Cells[j].Value?.ToString();
+                    }
+                }
+
+                // Guardar el archivo
+                FileInfo fileInfo = new FileInfo(filePath);
+                package.SaveAs(fileInfo);
+            }
+
+            MessageBox.Show("Archivo guardado correctamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+        private void subirCostosAcum()
+        {
+            try
+            {
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    connection.Open();
+
+                    foreach (DataGridViewRow row in dataGridView1.Rows)
+                    {
+                        if (!row.IsNewRow) // Excluir la fila nueva (vacía)
+                        {
+                            string query = "INSERT INTO Costos_Acumulados4 (id_Proy, anio_Proy, obra, avance, directo, indirecto, total, c_Gastos, utilidad_Perdida, cord, estatus) " +
+                                           "VALUES (@id_Proy, @anio_Proy, @obra, @avance, @directo, @indirecto, @total, @c_Gastos, @utilidad_Perdida, @cord, @estatus)";
+
+                            using (SqlCommand command = new SqlCommand(query, connection))
+                            {
+                                // Limpiar los parámetros anteriores antes de añadir nuevos
+                                command.Parameters.Clear();
+
+                                // Validar y convertir id_Proy (INT)
+                                if (int.TryParse(row.Cells[0].Value?.ToString(), out int idProy))
+                                {
+                                    command.Parameters.AddWithValue("@id_Proy", idProy);
+                                }
+                                else
+                                {
+                                    MessageBox.Show($"El valor de 'id_Proy' no es un número entero válido en la fila: {row.Index}");
+                                    continue; // Saltar esta fila y continuar con la siguiente
+                                }
+
+                                // Validar y convertir anio_Proy (INT)
+                                if (int.TryParse(row.Cells[1].Value?.ToString(), out int anioProy))
+                                {
+                                    command.Parameters.AddWithValue("@anio_Proy", anioProy);
+                                }
+                                else
+                                {
+                                    MessageBox.Show($"El valor de 'anio_Proy' no es un número entero válido en la fila: {row.Index}");
+                                    continue; // Saltar esta fila y continuar con la siguiente
+                                }
+
+                                // Validar y convertir valores numéricos (FLOAT)
+                                if (decimal.TryParse(row.Cells[3].Value?.ToString(), out decimal avance) &&
+                                    decimal.TryParse(row.Cells[4].Value?.ToString(), out decimal directo) &&
+                                    decimal.TryParse(row.Cells[5].Value?.ToString(), out decimal indirecto) &&
+                                    decimal.TryParse(row.Cells[6].Value?.ToString(), out decimal total) &&
+                                    decimal.TryParse(row.Cells[7].Value?.ToString(), out decimal cGastos) &&
+                                    decimal.TryParse(row.Cells[8].Value?.ToString(), out decimal utilidadPerdida)
+                                    )
+                                {
+                                    // Asignar los parámetros al comando SQL
+                                    command.Parameters.AddWithValue("@obra", row.Cells[2].Value ?? (object)DBNull.Value);
+                                    command.Parameters.AddWithValue("@avance", avance);
+                                    command.Parameters.AddWithValue("@directo", directo);
+                                    command.Parameters.AddWithValue("@indirecto", indirecto);
+                                    command.Parameters.AddWithValue("@total", total);
+                                    command.Parameters.AddWithValue("@c_Gastos", cGastos);
+                                    command.Parameters.AddWithValue("@utilidad_Perdida", utilidadPerdida);
+                                    command.Parameters.AddWithValue("@cord", row.Cells[9].Value ?? (object)DBNull.Value);
+                                    command.Parameters.AddWithValue("@estatus", row.Cells[10].Value ?? (object)DBNull.Value);
+
+
+
+                                    command.ExecuteNonQuery();
+                                }
+                                else
+                                {
+                                    MessageBox.Show($"Uno o más valores numéricos no son válidos en la fila: {row.Index}");
+                                    continue;
+                                }
+                            }
+                        }
+                    }
+
+                    MessageBox.Show("Datos insertados correctamente.");
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al insertar datos: {ex.Message}");
+            }
+        }
+
+
+
+        private void button2_Click_1(object sender, EventArgs e)
+        {
+            // Abrir un diálogo de guardado para que el usuario elija la ubicación del archivo
+            using (SaveFileDialog saveFileDialog = new SaveFileDialog())
+            {
+                saveFileDialog.Filter = "Excel Files|*.xlsx";
+                saveFileDialog.Title = "Guardar como Excel";
+
+                if (saveFileDialog.ShowDialog() == DialogResult.OK)
+                {
+                    SaveDataGridViewToExcel(dataGridView1, saveFileDialog.FileName);
+                }
+            }
+        }
+
+        private void button3_Click(object sender, EventArgs e)
+        {
+            subirCostosAcum();
+        }
+
     }
 }
