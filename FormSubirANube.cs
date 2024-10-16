@@ -15,7 +15,7 @@ namespace CustomerAdvancementManager_CAM_
         private string searchText = string.Empty;
         private int searchStartIndex = -1;
         private Label[] labels;
-        private string connectionString = "Server=WSTSEC-280\\MSSQLSERVER01;Database=Prueba;User Id=userPrueba;Password=3.1416Xpi;";
+        private string connectionString = "Server=WSTSEC-280\\MSSQLSERVER01;Database=CFDB;User Id=userPrueba;Password=3.1416Xpi;";
 
 
         public FormSubirANube()
@@ -337,6 +337,9 @@ namespace CustomerAdvancementManager_CAM_
                         case "tipo2":
                             headerText = "estatus";
                             break;
+                        case "Dias credito":
+                            headerText = "dias_credito";
+                            break;
                         default:
                             break;
                     }
@@ -564,7 +567,298 @@ namespace CustomerAdvancementManager_CAM_
             }
         }
 
+        private void subirsumaCostosAcum()
+        {
+            try
+            {
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    connection.Open();
 
+                    foreach (DataGridViewRow row in dataGridView1.Rows)
+                    {
+                        if (!row.IsNewRow) // Excluir la fila nueva (vacía)
+                        {
+                            string query = "INSERT INTO Acumulados_Totales (id_Proy, total_Avance, total_Directo, total_Indirecto, total__Suma, total_c_Gastos, total_uti_perd) " +
+                                           "VALUES (@id_Proy, @total_Avance, @total_Directo, @total_Indirecto, @total__Suma, @total_c_Gastos, @total_uti_perd)";
+
+                            using (SqlCommand command = new SqlCommand(query, connection))
+                            {
+                                // Limpiar los parámetros anteriores antes de añadir nuevos
+                                command.Parameters.Clear();
+
+                                // Validar y convertir id_Proy (INT)
+                                if (int.TryParse(row.Cells[0].Value?.ToString(), out int idProy))
+                                {
+                                    command.Parameters.AddWithValue("@id_Proy", idProy);
+                                }
+
+                                // Validar y convertir valores numéricos (FLOAT)
+                                if (decimal.TryParse(row.Cells[2].Value?.ToString(), out decimal avance) &&
+                                    decimal.TryParse(row.Cells[3].Value?.ToString(), out decimal directo) &&
+                                    decimal.TryParse(row.Cells[4].Value?.ToString(), out decimal indirecto) &&
+                                    decimal.TryParse(row.Cells[5].Value?.ToString(), out decimal total) &&
+                                    decimal.TryParse(row.Cells[6].Value?.ToString(), out decimal cGastos) &&
+                                    decimal.TryParse(row.Cells[7].Value?.ToString(), out decimal utilidadPerdida)
+                                    )
+                                {
+                                    // Asignar los parámetros al comando SQL
+                                    command.Parameters.AddWithValue("@total_Avance", avance);
+                                    command.Parameters.AddWithValue("@total_Directo", directo);
+                                    command.Parameters.AddWithValue("@total_Indirecto", indirecto);
+                                    command.Parameters.AddWithValue("@total__Suma", total);
+                                    command.Parameters.AddWithValue("@total_c_Gastos", cGastos);
+                                    command.Parameters.AddWithValue("@total_uti_perd", utilidadPerdida);
+
+                                    command.ExecuteNonQuery();
+                                }
+                                else
+                                {
+                                    MessageBox.Show($"Uno o más valores numéricos no son válidos en la fila: {row.Index}");
+                                    continue;
+                                }
+                            }
+                        }
+                    }
+
+                    MessageBox.Show("Datos insertados correctamente.");
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al insertar datos: {ex.Message}");
+            }
+        }
+
+        private void subirContratos()
+        {
+            try
+            {
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    connection.Open();
+
+                    foreach (DataGridViewRow row in dataGridView1.Rows)
+                    {
+                        if (!row.IsNewRow && !EsFilaClaveVacia(row)) // Excluir la fila nueva (vacía) y validar campos clave
+                        {
+                            string query = "INSERT INTO B_Contratos (id_Contrato, id_Empresa, id_Proy, tipo_Contrato, nombre_Contrato, observaciones, fecha_Factura, fecha_Deposito, RBO_FAC_NUM, total_Contrato, estimacion, fecha_de_Corte, fecha_de_Pago) " +
+                                           "VALUES (@id_Contrato, @id_Empresa, @id_Proy, @tipo_Contrato, @nombre_Contrato, @observaciones, @fecha_Factura, @fecha_Deposito, @RBO_FAC_NUM, @total_Contrato, @estimacion, @fecha_de_Corte, @fecha_de_Pago)";
+
+                            using (SqlCommand command = new SqlCommand(query, connection))
+                            {
+                                command.Parameters.Clear();
+
+                                // Validar y asignar valores de las columnas clave (no se permite DBNull.Value)
+                                command.Parameters.AddWithValue("@id_Contrato", int.Parse(row.Cells[0].Value.ToString())); // id_Contrato es PK, debe tener valor
+                                command.Parameters.AddWithValue("@id_Empresa", int.Parse(row.Cells[1].Value.ToString()));  // id_Empresa es FK, debe tener valor
+                                command.Parameters.AddWithValue("@id_Proy", int.Parse(row.Cells[2].Value.ToString()));     // id_Proy es FK, debe tener valor
+
+                                // Validar y asignar valores opcionales (pueden ser DBNull.Value si están vacíos)
+                                command.Parameters.AddWithValue("@tipo_Contrato", string.IsNullOrEmpty(row.Cells[3].Value?.ToString()) ? (object)DBNull.Value : row.Cells[3].Value?.ToString());
+                                command.Parameters.AddWithValue("@nombre_Contrato", string.IsNullOrEmpty(row.Cells[4].Value?.ToString()) ? (object)DBNull.Value : row.Cells[4].Value?.ToString());
+                                command.Parameters.AddWithValue("@observaciones", string.IsNullOrEmpty(row.Cells[5].Value?.ToString()) ? (object)DBNull.Value : row.Cells[5].Value?.ToString());
+                                command.Parameters.AddWithValue("@fecha_Factura", DateTime.TryParse(row.Cells[6].Value?.ToString(), out DateTime fechaFactura) ? (object)fechaFactura : DBNull.Value);
+                                command.Parameters.AddWithValue("@fecha_Deposito", DateTime.TryParse(row.Cells[7].Value?.ToString(), out DateTime fechaDeposito) ? (object)fechaDeposito : DBNull.Value);
+                                command.Parameters.AddWithValue("@RBO_FAC_NUM", int.TryParse(row.Cells[8].Value?.ToString(), out int rboFacNum) ? (object)rboFacNum : DBNull.Value);
+                                command.Parameters.AddWithValue("@total_Contrato", decimal.TryParse(row.Cells[9].Value?.ToString(), out decimal totalContrato) ? (object)totalContrato : DBNull.Value);
+                                command.Parameters.AddWithValue("@estimacion", string.IsNullOrEmpty(row.Cells[10].Value?.ToString()) ? (object)DBNull.Value : row.Cells[10].Value?.ToString());
+                                command.Parameters.AddWithValue("@fecha_de_Corte", DateTime.TryParse(row.Cells[11].Value?.ToString(), out DateTime fechaCorte) ? (object)fechaCorte : DBNull.Value);
+                                command.Parameters.AddWithValue("@fecha_de_Pago", DateTime.TryParse(row.Cells[12].Value?.ToString(), out DateTime fechaPago) ? (object)fechaPago : DBNull.Value);
+
+                                // Ejecutar la consulta SQL
+                                command.ExecuteNonQuery();
+                            }
+                        }
+                    }
+
+                    MessageBox.Show("Datos insertados correctamente.");
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al insertar datos: {ex.Message}");
+            }
+        }
+
+        // Método auxiliar para verificar si las columnas clave (id_Contrato, id_Empresa, id_Proy) están vacías o contienen solo espacios en blanco
+        private bool EsFilaClaveVacia(DataGridViewRow row)
+        {
+            // Verificar si alguna de las celdas de las columnas clave está vacía o contiene solo espacios en blanco
+            if (string.IsNullOrWhiteSpace(row.Cells[0].Value?.ToString()) || // id_Contrato (PK)
+                string.IsNullOrWhiteSpace(row.Cells[1].Value?.ToString()) || // id_Empresa (FK)
+                string.IsNullOrWhiteSpace(row.Cells[2].Value?.ToString()))   // id_Proy (FK)
+            {
+                return true; // Si alguna de las columnas clave está vacía o tiene espacios en blanco
+            }
+            return false; // Si todas las columnas clave tienen valores válidos
+        }
+
+
+
+        private void subirProyectos()
+        {
+            int filasProcesadas = 0; // Contador para las filas procesadas correctamente
+
+            try
+            {
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    connection.Open();
+
+                    foreach (DataGridViewRow row in dataGridView1.Rows)
+                    {
+                        if (!row.IsNewRow) // Excluir la fila nueva (vacía)
+                        {
+                            // Asegúrate de declarar y asignar el valor a idProy aquí
+                            int idProy;
+                            if (!int.TryParse(row.Cells[0].Value?.ToString(), out idProy))
+                            {
+                                // Mostrar solo un mensaje si el ID no es válido
+                                MessageBox.Show($"ID de Proyecto no válido en la fila: {row.Index}");
+                                continue; // Si el ID no es válido, continuar con la siguiente fila
+                            }
+
+                            // Verificar si existe el id_Proy en la tabla
+                            string checkQuery = "SELECT COUNT(1) FROM Proyectos WHERE id_Proy = @id_Proy";
+                            using (SqlCommand checkCommand = new SqlCommand(checkQuery, connection))
+                            {
+                                checkCommand.Parameters.Clear();
+                                checkCommand.Parameters.AddWithValue("@id_Proy", idProy);
+
+                                int exists = (int)checkCommand.ExecuteScalar(); // Devuelve 1 si existe, 0 si no
+
+                                if (exists > 0)
+                                {
+                                    // Realizar UPDATE
+                                    string updateQuery = "UPDATE Proyectos SET " +
+                                                         "anio_Inicio = @anio_Inicio, " +
+                                                         "estado = @estado, " +
+                                                         "nombre_obra = @nombre_obra, " +
+                                                         "coordinador = @coordinador, " +
+                                                         "dias_credito = @dias_credito " +
+                                                         "WHERE id_Proy = @id_Proy";
+
+                                    using (SqlCommand updateCommand = new SqlCommand(updateQuery, connection))
+                                    {
+                                        updateCommand.Parameters.Clear();
+                                        updateCommand.Parameters.AddWithValue("@id_Proy", idProy);
+
+                                        // Validar y convertir anio_Inicio (DATE)
+                                        if (DateTime.TryParse(row.Cells[1].Value?.ToString(), out DateTime anioInicio))
+                                        {
+                                            updateCommand.Parameters.AddWithValue("@anio_Inicio", anioInicio);
+                                        }
+                                        else
+                                        {
+                                            updateCommand.Parameters.AddWithValue("@anio_Inicio", DBNull.Value); // Permitir valor nulo
+                                        }
+
+                                        // Asignar estado (VARCHAR), permitir valor nulo
+                                        string estado = row.Cells[2].Value?.ToString();
+                                        updateCommand.Parameters.AddWithValue("@estado", string.IsNullOrEmpty(estado) ? (object)DBNull.Value : estado);
+
+                                        // Asignar nombre_obra (VARCHAR) - No permitir valor nulo
+                                        string nombreObra = row.Cells[3].Value?.ToString();
+                                        if (string.IsNullOrEmpty(nombreObra))
+                                        {
+                                            MessageBox.Show($"Nombre de obra no válido en la fila: {row.Index}");
+                                            continue; // Continuar sin procesar esta fila
+                                        }
+                                        updateCommand.Parameters.AddWithValue("@nombre_obra", nombreObra);
+
+                                        // Asignar coordinador (VARCHAR), permitir valor nulo
+                                        string coordinador = row.Cells[4].Value?.ToString();
+                                        updateCommand.Parameters.AddWithValue("@coordinador", string.IsNullOrEmpty(coordinador) ? (object)DBNull.Value : coordinador);
+
+                                        // Validar y convertir dias_credito (INT)
+                                        if (int.TryParse(row.Cells[5].Value?.ToString(), out int diasCredito))
+                                        {
+                                            updateCommand.Parameters.AddWithValue("@dias_credito", diasCredito);
+                                        }
+                                        else
+                                        {
+                                            updateCommand.Parameters.AddWithValue("@dias_credito", DBNull.Value); // Permitir valor nulo
+                                        }
+
+                                        // Ejecutar la consulta
+                                        updateCommand.ExecuteNonQuery();
+                                        filasProcesadas++; // Incrementar el contador de filas procesadas
+                                    }
+                                }
+                                else
+                                {
+                                    // Realizar INSERT
+                                    string insertQuery = "INSERT INTO Proyectos (id_Proy, anio_Inicio, estado, nombre_obra, coordinador, dias_credito) " +
+                                                         "VALUES (@id_Proy, @anio_Inicio, @estado, @nombre_obra, @coordinador, @dias_credito)";
+
+                                    using (SqlCommand insertCommand = new SqlCommand(insertQuery, connection))
+                                    {
+                                        insertCommand.Parameters.Clear();
+                                        insertCommand.Parameters.AddWithValue("@id_Proy", idProy);
+
+                                        // Validar y convertir anio_Inicio (DATE)
+                                        if (DateTime.TryParse(row.Cells[1].Value?.ToString(), out DateTime anioInicio))
+                                        {
+                                            insertCommand.Parameters.AddWithValue("@anio_Inicio", anioInicio);
+                                        }
+                                        else
+                                        {
+                                            insertCommand.Parameters.AddWithValue("@anio_Inicio", DBNull.Value); // Permitir valor nulo
+                                        }
+
+                                        // Asignar estado (VARCHAR), permitir valor nulo
+                                        string estado = row.Cells[2].Value?.ToString();
+                                        insertCommand.Parameters.AddWithValue("@estado", string.IsNullOrEmpty(estado) ? (object)DBNull.Value : estado);
+
+                                        // Asignar nombre_obra (VARCHAR) - No permitir valor nulo
+                                        string nombreObra = row.Cells[3].Value?.ToString();
+                                        if (string.IsNullOrEmpty(nombreObra))
+                                        {
+                                            MessageBox.Show($"Nombre de obra no válido en la fila: {row.Index}");
+                                            continue; // Continuar sin procesar esta fila
+                                        }
+                                        insertCommand.Parameters.AddWithValue("@nombre_obra", nombreObra);
+
+                                        // Asignar coordinador (VARCHAR), permitir valor nulo
+                                        string coordinador = row.Cells[4].Value?.ToString();
+                                        insertCommand.Parameters.AddWithValue("@coordinador", string.IsNullOrEmpty(coordinador) ? (object)DBNull.Value : coordinador);
+
+                                        // Validar y convertir dias_credito (INT)
+                                        if (int.TryParse(row.Cells[5].Value?.ToString(), out int diasCredito))
+                                        {
+                                            insertCommand.Parameters.AddWithValue("@dias_credito", diasCredito);
+                                        }
+                                        else
+                                        {
+                                            insertCommand.Parameters.AddWithValue("@dias_credito", DBNull.Value); // Permitir valor nulo
+                                        }
+
+                                        // Ejecutar la consulta
+                                        insertCommand.ExecuteNonQuery();
+                                        filasProcesadas++; // Incrementar el contador de filas procesadas
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Mostrar el mensaje de éxito una vez al final del proceso
+                    if (filasProcesadas > 0)
+                    {
+                        MessageBox.Show($"{filasProcesadas} datos procesados correctamente.");
+                    }
+                    else
+                    {
+                        MessageBox.Show("No se procesaron datos.");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al procesar datos: {ex.Message}");
+            }
+        }
 
         private void button2_Click_1(object sender, EventArgs e)
         {
@@ -580,11 +874,14 @@ namespace CustomerAdvancementManager_CAM_
                 }
             }
         }
-
         private void button3_Click(object sender, EventArgs e)
         {
-            subirCostosAcum();
+            subirContratos();
         }
 
+        private void FormSubirANube_Load_1(object sender, EventArgs e)
+        {
+
+        }
     }
 }

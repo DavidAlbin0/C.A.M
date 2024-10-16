@@ -39,3 +39,4 @@ C:\Users\david.albino\source\repos\CustomerAdvancementManager(CAM)\CustomerAdvan
 C:\Users\david.albino\source\repos\CustomerAdvancementManager(CAM)\CustomerAdvancementManager(CAM)\bin\Debug\System.Net.WebSockets.Client.Managed.xml
 C:\Users\david.albino\source\repos\CustomerAdvancementManager(CAM)\CustomerAdvancementManager(CAM)\bin\Debug\System.Reactive.xml
 C:\Users\david.albino\source\repos\CustomerAdvancementManager(CAM)\CustomerAdvancementManager(CAM)\bin\Debug\System.Threading.Tasks.Extensions.xml
+C:\Users\david.albino\source\repos\CustomerAdvancementManager(CAM)\CustomerAdvancementManager(CAM)\obj\Debug\CustomerAdvancementManager_CAM_.FormDashBoard.resources
