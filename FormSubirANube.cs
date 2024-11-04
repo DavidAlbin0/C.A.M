@@ -860,6 +860,133 @@ namespace CustomerAdvancementManager_CAM_
             }
         }
 
+
+        private decimal ConvertirADecimal(string valor)
+        {
+            if (string.IsNullOrEmpty(valor))
+            {
+                throw new ArgumentException("El valor no puede ser nulo o vacío.");
+            }
+
+            // Eliminar el separador de miles (usualmente punto) y reemplazar la coma por punto
+            valor = valor.Replace(".", "").Replace(",", ".");
+
+            // Intentar convertir la cadena a decimal
+            if (decimal.TryParse(valor, out decimal resultado))
+            {
+                return resultado;
+            }
+            else
+            {
+                throw new FormatException($"El valor '{valor}' no tiene un formato válido.");
+            }
+        }
+
+        private void SubirAvances()
+        {
+            int filasProcesadas = 0;
+
+            try
+            {
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    connection.Open();
+
+                    foreach (DataGridViewRow row in dataGridView1.Rows)
+                    {
+                        if (!row.IsNewRow) // Excluir la fila nueva
+                        {
+                            // Verificar si id_Avance es nulo o vacío
+                            if (string.IsNullOrWhiteSpace(row.Cells[0].Value?.ToString()))
+                            {
+                                MessageBox.Show($"El valor de id_Avance es nulo o vacío en la fila: {row.Index}. Se omitirá esta fila.");
+                                continue; // Saltar a la siguiente fila
+                            }
+
+                            // Asegurarse de que el id de Proyecto es un entero válido
+                            if (int.TryParse(row.Cells[1].Value?.ToString(), out int idProy)) // Cambiado a index 1 para id_Proy
+                            {
+                                try
+                                {
+                                    // Conversión de valores a decimal utilizando la nueva función
+                                    if (string.IsNullOrWhiteSpace(row.Cells[2].Value?.ToString()))
+                                    {
+                                        MessageBox.Show($"El valor de avance_total es nulo o vacío en la fila: {row.Index}. Se omitirá esta fila.");
+                                        continue; // Saltar a la siguiente fila
+                                    }
+                                    decimal avanceTotal = ConvertirADecimal(row.Cells[2].Value?.ToString()); // Cambiado a index 2
+
+                                    if (string.IsNullOrWhiteSpace(row.Cells[3].Value?.ToString()))
+                                    {
+                                        MessageBox.Show($"El valor de avance_indirecto es nulo o vacío en la fila: {row.Index}. Se omitirá esta fila.");
+                                        continue; // Saltar a la siguiente fila
+                                    }
+                                    decimal avanceIndirecto = ConvertirADecimal(row.Cells[3].Value?.ToString()); // Cambiado a index 3
+
+                                    if (string.IsNullOrWhiteSpace(row.Cells[4].Value?.ToString()))
+                                    {
+                                        MessageBox.Show($"El valor de porcentaje_avance es nulo o vacío en la fila: {row.Index}. Se omitirá esta fila.");
+                                        continue; // Saltar a la siguiente fila
+                                    }
+                                    decimal porcentajeAvance = ConvertirADecimal(row.Cells[4].Value?.ToString()); // Cambiado a index 4
+
+                                    // Validar fecha_avance como VARCHAR
+                                    string fechaAvance = row.Cells[5].Value?.ToString(); // Cambiado a index 5
+                                    if (string.IsNullOrWhiteSpace(fechaAvance))
+                                    {
+                                        MessageBox.Show($"El valor de fecha_avance es nulo o vacío en la fila: {row.Index}. Se omitirá esta fila.");
+                                        continue; // Saltar a la siguiente fila
+                                    }
+
+                                    // Validar límites
+                                    if (avanceTotal >= -99999999999999.9999m && avanceTotal <= 99999999999999.9999m &&
+                                        avanceIndirecto >= -99999999999999.9999m && avanceIndirecto <= 99999999999999.9999m &&
+                                        porcentajeAvance >= 0 && porcentajeAvance <= 100)
+                                    {
+                                        // Aquí va la lógica para insertar en la base de datos
+                                        string query = "INSERT INTO Avances (id_Proy, avance_total, avance_indirecto, porcentaje_avance, fecha_avance) " +
+                                                       "VALUES (@id_Proy, @avance_total, @avance_indirecto, @porcentaje_avance, @fecha_avance)";
+
+                                        using (SqlCommand command = new SqlCommand(query, connection))
+                                        {
+                                            command.Parameters.AddWithValue("@id_Proy", idProy);
+                                            command.Parameters.AddWithValue("@avance_total", avanceTotal);
+                                            command.Parameters.AddWithValue("@avance_indirecto", avanceIndirecto);
+                                            command.Parameters.AddWithValue("@porcentaje_avance", porcentajeAvance);
+                                            command.Parameters.AddWithValue("@fecha_avance", fechaAvance); // Almacenar como VARCHAR
+
+                                            command.ExecuteNonQuery();
+                                        }
+
+                                        filasProcesadas++;
+                                    }
+                                    else
+                                    {
+                                        MessageBox.Show($"Valores fuera de rango en la fila: {row.Index}");
+                                    }
+                                }
+                                catch (FormatException ex)
+                                {
+                                    MessageBox.Show($"Error de formato en la fila {row.Index}: {ex.Message}");
+                                }
+                            }
+                            else
+                            {
+                                MessageBox.Show($"ID de Proyecto no válido en la fila: {row.Index}");
+                            }
+                        }
+                    }
+
+                    MessageBox.Show($"{filasProcesadas} filas procesadas correctamente.");
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al procesar datos: {ex.Message}");
+            }
+        }
+
+
         private void button2_Click_1(object sender, EventArgs e)
         {
             // Abrir un diálogo de guardado para que el usuario elija la ubicación del archivo
@@ -876,7 +1003,7 @@ namespace CustomerAdvancementManager_CAM_
         }
         private void button3_Click(object sender, EventArgs e)
         {
-            subirContratos();
+            SubirAvances();
         }
 
         private void FormSubirANube_Load_1(object sender, EventArgs e)
